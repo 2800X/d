@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arousal Control Training Tracker</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        
+        .app-container {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        
+        .timer-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .time-display {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 15px 0;
+            color: #3498db;
+        }
+        
+        .phase-container {
+            margin-bottom: 20px;
+        }
+        
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .btn-danger {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .btn-success {
+            background-color: #2ecc71;
+            color: white;
+        }
+        
+        .btn-warning {
+            background-color: #f39c12;
+            color: white;
+        }
+        
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-box {
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 5px 0;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            text-transform: uppercase;
+        }
+        
+        .log-container {
+            margin-top: 30px;
+        }
+        
+        #sessionLog {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        #sessionLog th, #sessionLog td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        
+        #sessionLog th {
+            background-color: #f2f2f2;
+        }
+        
+        #sessionLog tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        .status-indicator {
+            text-align: center;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+        
+        .rest-mode {
+            background-color: #ffeaa7;
+            color: #d35400;
+        }
+        
+        .active-mode {
+            background-color: #d5f5e3;
+            color: #27ae60;
+        }
+        
+        .phases {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .phase-btn {
+            background-color: #ecf0f1;
+            color: #7f8c8d;
+            border: 1px solid #bdc3c7;
+            border-radius: 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        
+        .phase-btn.active {
+            background-color: #3498db;
+            color: white;
+            border-color: #2980b9;
+        }
+        
+        .completed-days-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #ecf0f1;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+        
+        .completed-days-fill {
+            height: 100%;
+            background-color: #3498db;
+            border-radius: 10px;
+            transition: width 0.5s;
+        }
+        
+        .note-textarea {
+            width: 100%;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+            resize: vertical;
+            min-height: 60px;
+        }
+        
+        @media (max-width: 600px) {
+            .stats-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <h1>Arousal Control Training Tracker</h1>
+        
+        <div class="phase-container">
+            <h3>Select Current Phase:</h3>
+            <div class="phases">
+                <button class="phase-btn" data-phase="1">Phase 1</button>
+                <button class="phase-btn" data-phase="2">Phase 2</button>
+                <button class="phase-btn" data-phase="3">Phase 3</button>
+                <button class="phase-btn" data-phase="4">Phase 4</button>
+                <button class="phase-btn" data-phase="5">Phase 5</button>
+                <button class="phase-btn" data-phase="6">Phase 6</button>
+                <button class="phase-btn" data-phase="7">Phase 7</button>
+                <button class="phase-btn" data-phase="8">Phase 8+</button>
+            </div>
+            <div id="phaseDescription" style="margin-top: 10px; font-style: italic;">Select a phase to see description</div>
+        </div>
+        
+        <div class="timer-container">
+            <div class="time-display" id="timerDisplay">20:00</div>
+            <div id="statusIndicator" class="status-indicator active-mode">Ready to Start</div>
+        </div>
+        
+        <div class="stats-container">
+            <div class="stat-box">
+                <div class="stat-label">First PONR</div>
+                <div class="stat-value" id="firstPONR">--:--</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Stops</div>
+                <div class="stat-value" id="stopsCount">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Erection Level</div>
+                <div class="stat-value" id="erectionLevel">-</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Urge (1-5)</div>
+                <div class="stat-value" id="urgeLevel">-</div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button id="startBtn" class="btn-primary">Start Session</button>
+            <button id="ponrBtn" class="btn-warning" disabled>Record First PONR</button>
+            <button id="stopBtn" class="btn-danger" disabled>Record Stop (+30s Rest)</button>
+            <button id="orgasmBtn" class="btn-danger" disabled>Record Orgasm</button>
+            <button id="endBtn" class="btn-danger" disabled>End Session</button>
+        </div>
+        
+        <div class="controls">
+            <label for="erectionSelect">Erection (EHS):</label>
+            <select id="erectionSelect" disabled>
+                <option value="-">-</option>
+                <option value="1">1 - Larger but not hard</option>
+                <option value="2">2 - Hard but not enough for penetration</option>
+                <option value="3">3 - Hard enough for penetration but not fully hard</option>
+                <option value="4">4 - Completely hard and fully rigid</option>
+                <option value="4.5">4.5 - Rock hard</option>
+                <option value="5">5 - Maximum hardness</option>
+            </select>
+            
+            <label for="urgeSelect" style="margin-left: 10px;">Urge Level:</label>
+            <select id="urgeSelect" disabled>
+                <option value="-">-</option>
+                <option value="1">1 - Very low</option>
+                <option value="1.5">1.5</option>
+                <option value="2">2 - Low</option>
+                <option value="2.5">2.5</option>
+                <option value="3">3 - Moderate</option>
+                <option value="3.5">3.5</option>
+                <option value="4">4 - High</option>
+                <option value="4.5">4.5</option>
+                <option value="5">5 - Very high</option>
+            </select>
+        </div>
+        
+        <div class="session-notes">
+            <h3>Session Notes</h3>
+            <textarea id="sessionNotes" class="note-textarea" placeholder="Enter any notes about your session here..." disabled></textarea>
+        </div>
+    </div>
+    
+    <div class="app-container">
+        <h2>Training Progress</h2>
+        <h3>Current Phase: <span id="currentPhaseDisplay">Not Started</span></h3>
+        
+        <div>
+            <h4>Completed Days in Current Phase: <span id="completedDaysCount">0</span>/5</h4>
+            <div class="completed-days-bar">
+                <div class="completed-days-fill" id="completedDaysFill" style="width: 0%"></div>
+            </div>
+        </div>
+        
+        <div class="log-container">
+            <h3>Session Log</h3>
+            <table id="sessionLog">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Duration</th>
+                        <th>First PONR</th>
+                        <th>Stops</th>
+                        <th>Erection</th>
+                        <th>Orgasm</th>
+                        <th>Urge (1-5)</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Session logs will be inserted here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <script>
+        // Timer variables
+        let timerInterval;
+        let timeRemaining = 20 * 60; // 20 minutes in seconds
+        let isRunning = false;
+        let isResting = false;
+        let restEndTime = 0;
+        let firstPONRTime = null;
+        let stopsCount = 0;
+        let sessionStartTime = null;
+        let currentPhase = null;
+        let hasRecordedOrgasm = false;
+        
+        // DOM elements
+        const timerDisplay = document.getElementById('timerDisplay');
+        const startBtn = document.getElementById('startBtn');
+        const ponrBtn = document.getElementById('ponrBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const orgasmBtn = document.getElementById('orgasmBtn');
+        const endBtn = document.getElementById('endBtn');
+        const firstPONRDisplay = document.getElementById('firstPONR');
+        const stopsCountDisplay = document.getElementById('stopsCount');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const erectionSelect = document.getElementById('erectionSelect');
+        const urgeSelect = document.getElementById('urgeSelect');
+        const erectionLevelDisplay = document.getElementById('erectionLevel');
+        const urgeLevelDisplay = document.getElementById('urgeLevel');
+        const sessionNotes = document.getElementById('sessionNotes');
+        const phaseButtons = document.querySelectorAll('.phase-btn');
+        const currentPhaseDisplay = document.getElementById('currentPhaseDisplay');
+        const completedDaysCount = document.getElementById('completedDaysCount');
+        const completedDaysFill = document.getElementById('completedDaysFill');
+        const phaseDescription = document.getElementById('phaseDescription');
+        
+        // Phase descriptions
+        const phaseDescriptions = {
+            1: "Peak and Valley training - Stimulate to just before 9/10, stop completely, wait 30-60 seconds, repeat.",
+            2: "Same as Phase 1, with additional breathwork - Focus on 4 second inhales, 6 second exhales.",
+            3: "Add mental imagery - Imagine pleasurable sex with partner while doing breathwork and Peak and Valley.",
+            4: "Cliffhanger Training - Keep arousal between 8/10 and 9/10 for as long as possible.",
+            5: "Stay at 8-9/10 by actively changing stimulation focus, grip intensity and speed.",
+            6: "Use Fleshlight or similar toy with Cliffhanger training.",
+            7: "Simulate thrusting with Fleshlight in stationary position.",
+            8: "Final Reinforcement Phase - Continue maintenance to further boost results."
+        };
+        
+        // Load saved data
+        loadData();
+        
+        // Event listeners
+        startBtn.addEventListener('click', toggleTimer);
+        ponrBtn.addEventListener('click', recordFirstPONR);
+        stopBtn.addEventListener('click', recordStop);
+        orgasmBtn.addEventListener('click', recordOrgasm);
+        endBtn.addEventListener('click', endSession);
+        erectionSelect.addEventListener('change', updateErectionLevel);
+        urgeSelect.addEventListener('change', updateUrgeLevel);
+        
+        phaseButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                phaseButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                currentPhase = this.getAttribute('data-phase');
+                currentPhaseDisplay.textContent = `Phase ${currentPhase}`;
+                phaseDescription.textContent = phaseDescriptions[currentPhase] || "No description available";
+                saveData();
+            });
+        });
+        
+        // Timer functions
+        function toggleTimer() {
+            if (!currentPhase) {
+                alert("Please select a phase before starting the session.");
+                return;
+            }
+            
+            if (isRunning) {
+                clearInterval(timerInterval);
+                startBtn.textContent = 'Resume';
+                isRunning = false;
+            } else {
+                if (!sessionStartTime) {
+                    sessionStartTime = new Date();
+                    enableControls(true);
+                    startBtn.textContent = 'Pause';
+                    sessionNotes.disabled = false;
+                } else {
+                    startBtn.textContent = 'Pause';
+                }
+                
+                startTimer();
+                isRunning = true;
+            }
+        }
+        
+        function startTimer() {
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+        
+        function updateTimer() {
+            if (isResting && Date.now() >= restEndTime) {
+                isResting = false;
+                statusIndicator.textContent = "Active - Continue Session";
+                statusIndicator.classList.remove('rest-mode');
+                statusIndicator.classList.add('active-mode');
+            }
+            
+            if (timeRemaining <= 0) {
+                clearInterval(timerInterval);
+                timerDisplay.textContent = "00:00";
+                alert("Session completed!");
+                endSession();
+                return;
+            }
+            
+            timeRemaining--;
+            
+            const minutes = Math.floor(timeRemaining / 60);
+            const seconds = timeRemaining % 60;
+            
+            timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
+        function recordFirstPONR() {
+            if (!firstPONRTime) {
+                const sessionElapsedTime = 20 * 60 - timeRemaining;
+                const minutes = Math.floor(sessionElapsedTime / 60);
+                const seconds = sessionElapsedTime % 60;
+                
+                firstPONRTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                firstPONRDisplay.textContent = firstPONRTime;
+                ponrBtn.disabled = true;
+            }
+        }
+        
+        function recordStop() {
+            stopsCount++;
+            stopsCountDisplay.textContent = stopsCount;
+            
+            // Start 30-second rest period
+            isResting = true;
+            restEndTime = Date.now() + 30 * 1000; // 30 seconds from now
+            
+            statusIndicator.textContent = "REST MODE - 30 seconds";
+            statusIndicator.classList.remove('active-mode');
+            statusIndicator.classList.add('rest-mode');
+            
+            // Create a countdown for the rest period
+            const restCountdown = setInterval(() => {
+                const remaining = Math.ceil((restEndTime - Date.now()) / 1000);
+                if (remaining <= 0) {
+                    clearInterval(restCountdown);
+                } else {
+                    statusIndicator.textContent = `REST MODE - ${remaining} seconds remaining`;
+                }
+            }, 1000);
+        }
+        
+        function recordOrgasm() {
+            hasRecordedOrgasm = true;
+            orgasmBtn.disabled = true;
+            alert("Orgasm recorded. Remember that for best results, try to avoid orgasm during training.");
+        }
+        
+        function updateErectionLevel() {
+            erectionLevelDisplay.textContent = erectionSelect.value;
+        }
+        
+        function updateUrgeLevel() {
+            urgeLevelDisplay.textContent = urgeSelect.value;
+        }
+        
+        function enableControls(enabled) {
+            ponrBtn.disabled = !enabled;
+            stopBtn.disabled = !enabled;
+            orgasmBtn.disabled = !enabled;
+            endBtn.disabled = !enabled;
+            erectionSelect.disabled = !enabled;
+            urgeSelect.disabled = !enabled;
+        }
+        
+        function endSession() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            
+            // Calculate duration
+            const duration = 20 - Math.floor(timeRemaining / 60);
+            
+            // Add session to log
+            const sessionLog = document.getElementById('sessionLog').getElementsByTagName('tbody')[0];
+            const newRow = sessionLog.insertRow();
+            
+            const today = new Date();
+            const dateStr = `${today.getDate().toString().padStart(2, '0')}.${(today.getMonth() + 1).toString().padStart(2, '0')}.${today.getFullYear().toString().substring(2)}`;
+            
+            newRow.insertCell().textContent = dateStr;
+            newRow.insertCell().textContent = `${duration} min`;
+            newRow.insertCell().textContent = firstPONRTime || '-';
+            newRow.insertCell().textContent = stopsCount;
+            newRow.insertCell().textContent = erectionLevelDisplay.textContent;
+            newRow.insertCell().textContent = hasRecordedOrgasm ? 'Yes' : 'No';
+            newRow.insertCell().textContent = urgeLevelDisplay.textContent;
+            newRow.insertCell().textContent = sessionNotes.value;
+            
+            // Update training progress if session was successful (no orgasm)
+            if (!hasRecordedOrgasm && duration >= 15) { // Consider session successful if it lasted at least 15 minutes
+                let completedDays = parseInt(completedDaysCount.textContent) || 0;
+                completedDays++;
+                completedDaysCount.textContent = completedDays;
+                const percentage = Math.min((completedDays / 5) * 100, 100);
+                completedDaysFill.style.width = `${percentage}%`;
+                
+                if (completedDays >= 5) {
+                    alert("Congratulations! You've completed 5 days in this phase. Consider moving to the next phase if you're consistently controlling your arousal.");
+                }
+            }
+            
+            // Reset session
+            resetSession();
+            saveData();
+        }
+        
+        function resetSession() {
+            timeRemaining = 20 * 60;
+            timerDisplay.textContent = "20:00";
+            firstPONRTime = null;
+            firstPONRDisplay.textContent = "--:--";
+            stopsCount = 0;
+            stopsCountDisplay.textContent = "0";
+            sessionStartTime = null;
+            isResting = false;
+            hasRecordedOrgasm = false;
+            
+            statusIndicator.textContent = "Ready to Start";
+            statusIndicator.classList.remove('rest-mode');
+            statusIndicator.classList.add('active-mode');
+            
+            startBtn.textContent = "Start Session";
+            
+            erectionSelect.value = "-";
+            urgeSelect.value = "-";
+            erectionLevelDisplay.textContent = "-";
+            urgeLevelDisplay.textContent = "-";
+            sessionNotes.value = "";
+            sessionNotes.disabled = true;
+            
+            enableControls(false);
+        }
+        
+        function saveData() {
+            const sessionData = Array.from(document.getElementById('sessionLog').getElementsByTagName('tbody')[0].rows).map(row => {
+                return {
+                    date: row.cells[0].textContent,
+                    duration: row.cells[1].textContent,
+                    firstPONR: row.cells[2].textContent,
+                    stops: row.cells[3].textContent,
+                    erection: row.cells[4].textContent,
+                    orgasm: row.cells[5].textContent,
+                    urge: row.cells[6].textContent,
+                    notes: row.cells[7].textContent
+                };
+            });
+            
+            const trainingData = {
+                currentPhase: currentPhase,
+                completedDays: parseInt(completedDaysCount.textContent) || 0,
+                sessionLog: sessionData
+            };
+            
+            localStorage.setItem('arousalControlTraining', JSON.stringify(trainingData));
+        }
+        
+        function loadData() {
+            const savedData = localStorage.getItem('arousalControlTraining');
+            if (savedData) {
+                const trainingData = JSON.parse(savedData);
+                
+                // Restore current phase
+                if (trainingData.currentPhase) {
+                    currentPhase = trainingData.currentPhase;
+                    currentPhaseDisplay.textContent = `Phase ${currentPhase}`;
+                    document.querySelector(`.phase-btn[data-phase="${currentPhase}"]`)?.classList.add('active');
+                    phaseDescription.textContent = phaseDescriptions[currentPhase] || "No description available";
+                }
+                
+                // Restore completed days
+                if (trainingData.completedDays) {
+                    completedDaysCount.textContent = trainingData.completedDays;
+                    const percentage = Math.min((trainingData.completedDays / 5) * 100, 100);
+                    completedDaysFill.style.width = `${percentage}%`;
+                }
+                
+                // Restore session log
+                if (trainingData.sessionLog && trainingData.sessionLog.length > 0) {
+                    const sessionLog = document.getElementById('sessionLog').getElementsByTagName('tbody')[0];
+                    
+                    trainingData.sessionLog.forEach(session => {
+                        const newRow = sessionLog.insertRow();
+                        newRow.insertCell().textContent = session.date;
+                        newRow.insertCell().textContent = session.duration;
+                        newRow.insertCell().textContent = session.firstPONR;
+                        newRow.insertCell().textContent = session.stops;
+                        newRow.insertCell().textContent = session.erection;
+                        newRow.insertCell().textContent = session.orgasm;
+                        newRow.insertCell().textContent = session.urge;
+                        newRow.insertCell().textContent = session.notes;
+                    });
+                }
+            }
+        }
+    </script>
+</body>
+</html>
