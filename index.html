@@ -375,20 +375,21 @@
     </div>
     
     <script>
-        // Timer variables
+        // Timer variables with timestamp-based tracking
         let timerInterval;
-        let timeRemaining = 20 * 60; // 20 minutes in seconds
+        let sessionDuration = 20 * 60 * 1000; // 20 minutes in milliseconds
+        let sessionStartTime = null;
+        let sessionPauseTime = null;
+        let totalPausedTime = 0;
         let isRunning = false;
         let isResting = false;
         let restEndTime = 0;
         let firstPONRTime = null;
         let stopsCount = 0;
-        let sessionStartTime = null;
         let currentPhase = null;
         let hasRecordedOrgasm = false;
         
         // Create audio elements for alerts
-        // Using a more noticeable beep sound
         const restEndAudio = new Audio('data:audio/wav;base64,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');
         
         // DOM elements
@@ -436,6 +437,14 @@
         erectionSelect.addEventListener('change', updateErectionLevel);
         urgeSelect.addEventListener('change', updateUrgeLevel);
         
+        // Handle page visibility changes for accurate timing
+        document.addEventListener('visibilitychange', function() {
+            if (isRunning && !document.hidden) {
+                // Page became visible again - update timer immediately
+                updateTimer();
+            }
+        });
+        
         // Sound settings
         document.getElementById('soundEnabled').addEventListener('change', function() {
             localStorage.setItem('soundEnabled', this.checked);
@@ -460,7 +469,7 @@
         });
         
         // Load sound settings
-        const soundEnabled = localStorage.getItem('soundEnabled') !== 'false'; // Default to true
+        const soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
         document.getElementById('soundEnabled').checked = soundEnabled;
         
         const soundVolume = localStorage.getItem('soundVolume') || 1;
@@ -481,7 +490,7 @@
             });
         });
         
-        // Timer functions
+        // Accurate timer functions using timestamps
         function toggleTimer() {
             if (!currentPhase) {
                 alert("Please select a phase before starting the session.");
@@ -489,26 +498,36 @@
             }
             
             if (isRunning) {
+                // Pause timer
                 clearInterval(timerInterval);
+                sessionPauseTime = Date.now();
                 startBtn.textContent = 'Resume';
                 isRunning = false;
             } else {
                 if (!sessionStartTime) {
-                    sessionStartTime = new Date();
+                    // Start new session
+                    sessionStartTime = Date.now();
+                    sessionPauseTime = null;
+                    totalPausedTime = 0;
                     enableControls(true);
-                    startBtn.textContent = 'Pause';
                     sessionNotes.disabled = false;
-                } else {
-                    startBtn.textContent = 'Pause';
+                } else if (sessionPauseTime) {
+                    // Resume from pause
+                    totalPausedTime += Date.now() - sessionPauseTime;
+                    sessionPauseTime = null;
                 }
                 
+                startBtn.textContent = 'Pause';
                 startTimer();
                 isRunning = true;
             }
         }
         
         function startTimer() {
-            timerInterval = setInterval(updateTimer, 1000);
+            // Update immediately
+            updateTimer();
+            // Then update every 100ms for smooth display
+            timerInterval = setInterval(updateTimer, 100);
         }
         
         function updateTimer() {
@@ -521,15 +540,11 @@
                 // Play sound alert when rest period ends (if enabled)
                 const soundEnabled = document.getElementById('soundEnabled').checked;
                 if (soundEnabled) {
-                    // Play the sound multiple times to make it more noticeable
                     restEndAudio.play();
-                    
-                    // Play multiple beeps with slight delay
                     setTimeout(() => {
                         restEndAudio.currentTime = 0;
                         restEndAudio.play();
                     }, 300);
-                    
                     setTimeout(() => {
                         restEndAudio.currentTime = 0;
                         restEndAudio.play();
@@ -543,7 +558,12 @@
                 }, 1500);
             }
             
-            if (timeRemaining <= 0) {
+            // Calculate elapsed time based on timestamps
+            const currentTime = Date.now();
+            const elapsedTime = currentTime - sessionStartTime - totalPausedTime;
+            const remainingTime = Math.max(0, sessionDuration - elapsedTime);
+            
+            if (remainingTime <= 0) {
                 clearInterval(timerInterval);
                 timerDisplay.textContent = "00:00";
                 alert("Session completed!");
@@ -551,19 +571,21 @@
                 return;
             }
             
-            timeRemaining--;
-            
-            const minutes = Math.floor(timeRemaining / 60);
-            const seconds = timeRemaining % 60;
+            // Convert to minutes and seconds
+            const totalSeconds = Math.ceil(remainingTime / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
             
             timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         }
         
         function recordFirstPONR() {
             if (!firstPONRTime) {
-                const sessionElapsedTime = 20 * 60 - timeRemaining;
-                const minutes = Math.floor(sessionElapsedTime / 60);
-                const seconds = sessionElapsedTime % 60;
+                const currentTime = Date.now();
+                const sessionElapsedTime = currentTime - sessionStartTime - totalPausedTime;
+                const elapsedSeconds = Math.floor(sessionElapsedTime / 1000);
+                const minutes = Math.floor(elapsedSeconds / 60);
+                const seconds = elapsedSeconds % 60;
                 
                 firstPONRTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
                 firstPONRDisplay.textContent = firstPONRTime;
@@ -624,8 +646,10 @@
             clearInterval(timerInterval);
             isRunning = false;
             
-            // Calculate duration
-            const duration = 20 - Math.floor(timeRemaining / 60);
+            // Calculate duration in minutes based on actual elapsed time
+            const currentTime = Date.now();
+            const sessionElapsedTime = currentTime - sessionStartTime - totalPausedTime;
+            const duration = Math.round(sessionElapsedTime / (1000 * 60)); // Convert to minutes
             
             // Add session to log
             const sessionLog = document.getElementById('sessionLog').getElementsByTagName('tbody')[0];
@@ -662,15 +686,19 @@
         }
         
         function resetSession() {
-            timeRemaining = 20 * 60;
-            timerDisplay.textContent = "20:00";
-            firstPONRTime = null;
-            firstPONRDisplay.textContent = "--:--";
-            stopsCount = 0;
-            stopsCountDisplay.textContent = "0";
+            // Reset all timer variables
             sessionStartTime = null;
+            sessionPauseTime = null;
+            totalPausedTime = 0;
+            firstPONRTime = null;
+            stopsCount = 0;
             isResting = false;
             hasRecordedOrgasm = false;
+            
+            // Reset display
+            timerDisplay.textContent = "20:00";
+            firstPONRDisplay.textContent = "--:--";
+            stopsCountDisplay.textContent = "0";
             
             statusIndicator.textContent = "Ready to Start";
             statusIndicator.classList.remove('rest-mode');
