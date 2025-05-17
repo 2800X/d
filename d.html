@@ -210,11 +210,51 @@
                 grid-template-columns: repeat(2, 1fr);
             }
         }
+        
+        @keyframes flash {
+            0% { background-color: #d5f5e3; }
+            50% { background-color: #27ae60; }
+            100% { background-color: #d5f5e3; }
+        }
+        
+        .settings-box {
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .settings-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .settings-option {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+        
+        .settings-option label {
+            margin-left: 5px;
+        }
     </style>
 </head>
 <body>
     <div class="app-container">
         <h1>Arousal Control Training Tracker</h1>
+        
+        <div class="settings-box">
+            <div class="settings-title">Sound Settings</div>
+            <div class="settings-option">
+                <input type="checkbox" id="soundEnabled" checked>
+                <label for="soundEnabled">Enable sound alerts when rest period ends</label>
+            </div>
+            <div class="settings-option">
+                <label for="restPeriodLength">Rest period length (seconds): </label>
+                <input type="number" id="restPeriodLength" min="10" max="120" value="30" style="width: 60px;">
+            </div>
+        </div>
         
         <div class="phase-container">
             <h3>Select Current Phase:</h3>
@@ -342,6 +382,9 @@
         let currentPhase = null;
         let hasRecordedOrgasm = false;
         
+        // Create audio elements for alerts
+        const restEndAudio = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tAwAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAASAAAeMwAUFBQUFCgUFBQUFBQ8PDw8PDxVPDw8PDw8aWlpaWlpfGlpaWlpaZSUlJSUlKaUlJSUlJS5ubm5ubm5ubm5ubm5u+Dg4ODg4Pzg4ODg4ODw///////////////6+fn5+fn5+fn5+fn5+fn5+fn5+fn///8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAYAAAAAAAAAHjOxUcWNAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//tAwAAABLBTTRUwACC+Cm3DrQAiQgEJmZpoCcGeRgEACAMYAgAABwAxP/5T0/5c4RP/9EeIP0LwH//xBf/0eYP/y5iSSSSSTEFNRTMuOTkuNaqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//sQxMQDwAABpBwAACAAADSAAAAEqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqo=');
+        
         // DOM elements
         const timerDisplay = document.getElementById('timerDisplay');
         const startBtn = document.getElementById('startBtn');
@@ -386,6 +429,22 @@
         endBtn.addEventListener('click', endSession);
         erectionSelect.addEventListener('change', updateErectionLevel);
         urgeSelect.addEventListener('change', updateUrgeLevel);
+        
+        // Sound settings
+        document.getElementById('soundEnabled').addEventListener('change', function() {
+            localStorage.setItem('soundEnabled', this.checked);
+        });
+        
+        document.getElementById('restPeriodLength').addEventListener('change', function() {
+            localStorage.setItem('restPeriodLength', this.value);
+        });
+        
+        // Load sound settings
+        const soundEnabled = localStorage.getItem('soundEnabled') !== 'false'; // Default to true
+        document.getElementById('soundEnabled').checked = soundEnabled;
+        
+        const restPeriodLength = localStorage.getItem('restPeriodLength') || 30;
+        document.getElementById('restPeriodLength').value = restPeriodLength;
         
         phaseButtons.forEach(button => {
             button.addEventListener('click', function() {
@@ -434,6 +493,18 @@
                 statusIndicator.textContent = "Active - Continue Session";
                 statusIndicator.classList.remove('rest-mode');
                 statusIndicator.classList.add('active-mode');
+                
+                // Play sound alert when rest period ends (if enabled)
+                const soundEnabled = document.getElementById('soundEnabled').checked;
+                if (soundEnabled) {
+                    restEndAudio.play();
+                }
+                
+                // Visual alert
+                statusIndicator.style.animation = 'flash 0.5s 3';
+                setTimeout(() => {
+                    statusIndicator.style.animation = '';
+                }, 1500);
             }
             
             if (timeRemaining <= 0) {
@@ -468,11 +539,14 @@
             stopsCount++;
             stopsCountDisplay.textContent = stopsCount;
             
-            // Start 30-second rest period
-            isResting = true;
-            restEndTime = Date.now() + 30 * 1000; // 30 seconds from now
+            // Get rest period length from settings
+            const restLength = parseInt(document.getElementById('restPeriodLength').value) || 30;
             
-            statusIndicator.textContent = "REST MODE - 30 seconds";
+            // Start rest period
+            isResting = true;
+            restEndTime = Date.now() + restLength * 1000;
+            
+            statusIndicator.textContent = `REST MODE - ${restLength} seconds`;
             statusIndicator.classList.remove('active-mode');
             statusIndicator.classList.add('rest-mode');
             
