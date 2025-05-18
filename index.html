@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Training Tracker</title>
+    <title>Arousal Control Training Tracker</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -242,7 +242,7 @@
 </head>
 <body>
     <div class="app-container">
-        <h1>Training Tracker</h1>
+        <h1>Arousal Control Training Tracker</h1>
         
         <div class="settings-box">
             <div class="settings-title">Sound & Alert Settings</div>
@@ -273,6 +273,18 @@
                 <button class="phase-btn" data-phase="7">Phase 7</button>
                 <button class="phase-btn" data-phase="8">Phase 8+</button>
             </div>
+            
+            <div id="daySelector" style="display: none; margin-top: 15px;">
+                <h4>Select Training Day:</h4>
+                <div class="phases">
+                    <button class="phase-btn day-btn" data-day="1">Day 1</button>
+                    <button class="phase-btn day-btn" data-day="2">Day 2</button>
+                    <button class="phase-btn day-btn" data-day="3">Day 3</button>
+                    <button class="phase-btn day-btn" data-day="4">Day 4</button>
+                    <button class="phase-btn day-btn" data-day="5">Day 5</button>
+                </div>
+            </div>
+            
             <div id="phaseDescription" style="margin-top: 10px; font-style: italic;">Select a phase to see description</div>
         </div>
         
@@ -358,6 +370,8 @@
                 <thead>
                     <tr>
                         <th>Date</th>
+                        <th>Phase</th>
+                        <th>Day</th>
                         <th>Duration</th>
                         <th>First PONR</th>
                         <th>Stops</th>
@@ -375,6 +389,25 @@
     </div>
     
     <script>
+        // Safe localStorage wrapper with fallback
+        let tempStorage = {};
+        
+        function safeSetItem(key, value) {
+            try {
+                localStorage.setItem(key, value);
+            } catch (e) {
+                tempStorage[key] = value;
+            }
+        }
+        
+        function safeGetItem(key) {
+            try {
+                return localStorage.getItem(key);
+            } catch (e) {
+                return tempStorage[key] || null;
+            }
+        }
+        
         // Timer variables with timestamp-based tracking
         let timerInterval;
         let sessionDuration = 20 * 60 * 1000; // 20 minutes in milliseconds
@@ -387,6 +420,7 @@
         let firstPONRTime = null;
         let stopsCount = 0;
         let currentPhase = null;
+        let currentDay = null;
         let hasRecordedOrgasm = false;
         
         // Create audio elements for alerts
@@ -407,7 +441,9 @@
         const erectionLevelDisplay = document.getElementById('erectionLevel');
         const urgeLevelDisplay = document.getElementById('urgeLevel');
         const sessionNotes = document.getElementById('sessionNotes');
-        const phaseButtons = document.querySelectorAll('.phase-btn');
+        const phaseButtons = document.querySelectorAll('.phase-btn:not(.day-btn)');
+        const dayButtons = document.querySelectorAll('.day-btn');
+        const daySelector = document.getElementById('daySelector');
         const currentPhaseDisplay = document.getElementById('currentPhaseDisplay');
         const completedDaysCount = document.getElementById('completedDaysCount');
         const completedDaysFill = document.getElementById('completedDaysFill');
@@ -484,16 +520,43 @@
                 phaseButtons.forEach(btn => btn.classList.remove('active'));
                 this.classList.add('active');
                 currentPhase = this.getAttribute('data-phase');
-                currentPhaseDisplay.textContent = `Phase ${currentPhase}`;
+                
+                // Show day selector
+                daySelector.style.display = 'block';
+                
+                // Reset day selection
+                dayButtons.forEach(btn => btn.classList.remove('active'));
+                currentDay = null;
+                
+                currentPhaseDisplay.textContent = `Phase ${currentPhase} - Select Day`;
                 phaseDescription.textContent = phaseDescriptions[currentPhase] || "No description available";
+                saveData();
+            });
+        });
+        
+        dayButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                dayButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                currentDay = this.getAttribute('data-day');
+                
+                if (currentPhase && currentDay) {
+                    currentPhaseDisplay.textContent = `Phase ${currentPhase}, Day ${currentDay}`;
+                    
+                    // Update completed days display based on current selection
+                    const dayNumber = parseInt(currentDay);
+                    completedDaysCount.textContent = Math.max(0, dayNumber - 1);
+                    const percentage = Math.min(((dayNumber - 1) / 5) * 100, 100);
+                    completedDaysFill.style.width = `${percentage}%`;
+                }
                 saveData();
             });
         });
         
         // Accurate timer functions using timestamps
         function toggleTimer() {
-            if (!currentPhase) {
-                alert("Please select a phase before starting the session.");
+            if (!currentPhase || !currentDay) {
+                alert("Please select both a phase and a day before starting the session.");
                 return;
             }
             
@@ -656,9 +719,16 @@
             const newRow = sessionLog.insertRow();
             
             const today = new Date();
-            const dateStr = `${today.getDate().toString().padStart(2, '0')}.${(today.getMonth() + 1).toString().padStart(2, '0')}.${today.getFullYear().toString().substring(2)}`;
+            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const dayName = dayNames[today.getDay()];
+            const month = today.getMonth() + 1;
+            const day = today.getDate();
+            const year = today.getFullYear().toString().substring(2);
+            const dateStr = `${dayName}, ${month}/${day}/${year}`;
             
             newRow.insertCell().textContent = dateStr;
+            newRow.insertCell().textContent = currentPhase ? `Phase ${currentPhase}` : '-';
+            newRow.insertCell().textContent = currentDay ? `Day ${currentDay}` : '-';
             newRow.insertCell().textContent = `${duration} min`;
             newRow.insertCell().textContent = firstPONRTime || '-';
             newRow.insertCell().textContent = stopsCount;
@@ -720,36 +790,47 @@
             const sessionData = Array.from(document.getElementById('sessionLog').getElementsByTagName('tbody')[0].rows).map(row => {
                 return {
                     date: row.cells[0].textContent,
-                    duration: row.cells[1].textContent,
-                    firstPONR: row.cells[2].textContent,
-                    stops: row.cells[3].textContent,
-                    erection: row.cells[4].textContent,
-                    orgasm: row.cells[5].textContent,
-                    urge: row.cells[6].textContent,
-                    notes: row.cells[7].textContent
+                    phase: row.cells[1].textContent,
+                    day: row.cells[2].textContent,
+                    duration: row.cells[3].textContent,
+                    firstPONR: row.cells[4].textContent,
+                    stops: row.cells[5].textContent,
+                    erection: row.cells[6].textContent,
+                    orgasm: row.cells[7].textContent,
+                    urge: row.cells[8].textContent,
+                    notes: row.cells[9].textContent
                 };
             });
             
             const trainingData = {
                 currentPhase: currentPhase,
+                currentDay: currentDay,
                 completedDays: parseInt(completedDaysCount.textContent) || 0,
                 sessionLog: sessionData
             };
             
-            localStorage.setItem('arousalControlTraining', JSON.stringify(trainingData));
+            safeSetItem('arousalControlTraining', JSON.stringify(trainingData));
         }
         
         function loadData() {
-            const savedData = localStorage.getItem('arousalControlTraining');
+            const savedData = safeGetItem('arousalControlTraining');
             if (savedData) {
                 const trainingData = JSON.parse(savedData);
                 
-                // Restore current phase
+                // Restore current phase and day
                 if (trainingData.currentPhase) {
                     currentPhase = trainingData.currentPhase;
-                    currentPhaseDisplay.textContent = `Phase ${currentPhase}`;
                     document.querySelector(`.phase-btn[data-phase="${currentPhase}"]`)?.classList.add('active');
+                    daySelector.style.display = 'block';
                     phaseDescription.textContent = phaseDescriptions[currentPhase] || "No description available";
+                    
+                    if (trainingData.currentDay) {
+                        currentDay = trainingData.currentDay;
+                        document.querySelector(`.day-btn[data-day="${currentDay}"]`)?.classList.add('active');
+                        currentPhaseDisplay.textContent = `Phase ${currentPhase}, Day ${currentDay}`;
+                    } else {
+                        currentPhaseDisplay.textContent = `Phase ${currentPhase} - Select Day`;
+                    }
                 }
                 
                 // Restore completed days
@@ -766,6 +847,8 @@
                     trainingData.sessionLog.forEach(session => {
                         const newRow = sessionLog.insertRow();
                         newRow.insertCell().textContent = session.date;
+                        newRow.insertCell().textContent = session.phase || '-';
+                        newRow.insertCell().textContent = session.day || '-';
                         newRow.insertCell().textContent = session.duration;
                         newRow.insertCell().textContent = session.firstPONR;
                         newRow.insertCell().textContent = session.stops;
