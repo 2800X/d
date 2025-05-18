@@ -828,16 +828,25 @@
                         currentDay = trainingData.currentDay;
                         document.querySelector(`.day-btn[data-day="${currentDay}"]`)?.classList.add('active');
                         currentPhaseDisplay.textContent = `Phase ${currentPhase}, Day ${currentDay}`;
+                        
+                        // Update completed days display based on saved selection
+                        const dayNumber = parseInt(currentDay);
+                        completedDaysCount.textContent = Math.max(0, dayNumber - 1);
+                        const percentage = Math.min(((dayNumber - 1) / 5) * 100, 100);
+                        completedDaysFill.style.width = `${percentage}%`;
                     } else {
                         currentPhaseDisplay.textContent = `Phase ${currentPhase} - Select Day`;
                     }
                 }
                 
-                // Restore completed days
-                if (trainingData.completedDays) {
-                    completedDaysCount.textContent = trainingData.completedDays;
-                    const percentage = Math.min((trainingData.completedDays / 5) * 100, 100);
-                    completedDaysFill.style.width = `${percentage}%`;
+                // Restore completed days (keep existing logic for old data)
+                if (trainingData.completedDays !== undefined) {
+                    // Only use saved completedDays if no current day is selected
+                    if (!currentDay) {
+                        completedDaysCount.textContent = trainingData.completedDays;
+                        const percentage = Math.min((trainingData.completedDays / 5) * 100, 100);
+                        completedDaysFill.style.width = `${percentage}%`;
+                    }
                 }
                 
                 // Restore session log
