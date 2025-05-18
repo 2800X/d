@@ -712,7 +712,16 @@
             // Calculate duration in minutes based on actual elapsed time
             const currentTime = Date.now();
             const sessionElapsedTime = currentTime - sessionStartTime - totalPausedTime;
-            const duration = Math.round(sessionElapsedTime / (1000 * 60)); // Convert to minutes
+            const duration = Math.max(1, Math.round(sessionElapsedTime / (1000 * 60))); // Convert to minutes, minimum 1 minute
+            
+            // Debug logging (remove in production)
+            console.log('Session duration calculation:', {
+                sessionStartTime: new Date(sessionStartTime),
+                currentTime: new Date(currentTime),
+                totalPausedTime: totalPausedTime,
+                sessionElapsedTime: sessionElapsedTime,
+                durationMinutes: duration
+            });
             
             // Add session to log
             const sessionLog = document.getElementById('sessionLog').getElementsByTagName('tbody')[0];
@@ -784,6 +793,9 @@
             sessionNotes.disabled = true;
             
             enableControls(false);
+            
+            // Debug log
+            console.log('Session reset completed');
         }
         
         function saveData() {
