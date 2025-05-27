@@ -500,6 +500,9 @@
         // Load saved data
         loadData();
         
+        // Check for and restore active session on page load
+        restoreActiveSession();
+        
         // Event listeners
         startBtn.addEventListener('click', toggleTimer);
         ponrBtn.addEventListener('click', recordFirstPONR);
@@ -704,6 +707,12 @@
             const seconds = totalSeconds % 60;
             
             timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Auto-save session state every 10 seconds while running
+            if (isRunning && (Date.now() - (window.lastAutoSave || 0)) > 10000) {
+                saveActiveSession();
+                window.lastAutoSave = Date.now();
+            }
         }
         
         function recordFirstPONR() {
@@ -829,6 +838,9 @@
         }
         
         function resetSession() {
+            // Clear active session from storage
+            clearActiveSession();
+            
             // Reset all timer variables
             sessionStartTime = null;
             sessionPauseTime = null;
@@ -887,6 +899,133 @@
             };
             
             safeSetItem('arousalControlTraining', JSON.stringify(trainingData));
+        }
+        
+        function saveActiveSession() {
+            if (sessionStartTime && isRunning) {
+                const activeSession = {
+                    sessionStartTime: sessionStartTime,
+                    totalPausedTime: totalPausedTime,
+                    sessionPauseTime: sessionPauseTime,
+                    firstPONRTime: firstPONRTime,
+                    stopsCount: stopsCount,
+                    hasRecordedOrgasm: hasRecordedOrgasm,
+                    hasTriggeredTenMinuteAlert: hasTriggeredTenMinuteAlert,
+                    isResting: isResting,
+                    restEndTime: restEndTime,
+                    erectionLevel: erectionSelect.value,
+                    urgeLevel: urgeSelect.value,
+                    sessionNotes: sessionNotes.value,
+                    currentPhase: currentPhase,
+                    currentDay: currentDay,
+                    lastSaveTime: Date.now()
+                };
+                
+                safeSetItem('activeSession', JSON.stringify(activeSession));
+            }
+        }
+        
+        function clearActiveSession() {
+            try {
+                localStorage.removeItem('activeSession');
+            } catch (e) {
+                delete tempStorage['activeSession'];
+            }
+        }
+        
+        function restoreActiveSession() {
+            const activeSessionData = safeGetItem('activeSession');
+            if (activeSessionData) {
+                try {
+                    const session = JSON.parse(activeSessionData);
+                    const now = Date.now();
+                    const timeSinceLastSave = now - session.lastSaveTime;
+                    
+                    // Only restore if session was saved within the last 24 hours
+                    if (timeSinceLastSave < 24 * 60 * 60 * 1000) {
+                        const sessionElapsed = now - session.sessionStartTime - session.totalPausedTime;
+                        
+                        // Only restore if session hasn't exceeded 20 minutes
+                        if (sessionElapsed < sessionDuration) {
+                            // Show confirmation dialog
+                            const restore = confirm(
+                                `Found an active session that was interrupted!\n\n` +
+                                `Session was running for: ${Math.floor(sessionElapsed / (1000 * 60))} minutes ${Math.floor((sessionElapsed % (1000 * 60)) / 1000)} seconds\n` +
+                                `Phase: ${session.currentPhase}, Day: ${session.currentDay}\n` +
+                                `Stops: ${session.stopsCount}\n\n` +
+                                `Would you like to restore this session?`
+                            );
+                            
+                            if (restore) {
+                                // Restore session state
+                                sessionStartTime = session.sessionStartTime;
+                                totalPausedTime = session.totalPausedTime;
+                                sessionPauseTime = null; // Resume immediately
+                                firstPONRTime = session.firstPONRTime;
+                                stopsCount = session.stopsCount;
+                                hasRecordedOrgasm = session.hasRecordedOrgasm;
+                                hasTriggeredTenMinuteAlert = session.hasTriggeredTenMinuteAlert;
+                                isResting = false; // Reset rest state for safety
+                                
+                                // Restore UI state
+                                currentPhase = session.currentPhase;
+                                currentDay = session.currentDay;
+                                
+                                // Update displays
+                                firstPONRDisplay.textContent = firstPONRTime || '--:--';
+                                stopsCountDisplay.textContent = stopsCount;
+                                erectionSelect.value = session.erectionLevel || '-';
+                                urgeSelect.value = session.urgeLevel || '-';
+                                erectionLevelDisplay.textContent = session.erectionLevel || '-';
+                                urgeLevelDisplay.textContent = session.urgeLevel || '-';
+                                sessionNotes.value = session.sessionNotes || '';
+                                
+                                // Update phase/day buttons
+                                if (currentPhase) {
+                                    document.querySelector(`.phase-btn[data-phase="${currentPhase}"]`)?.classList.add('active');
+                                    daySelector.style.display = 'block';
+                                    phaseDescription.textContent = phaseDescriptions[currentPhase] || "No description available";
+                                }
+                                if (currentDay) {
+                                    document.querySelector(`.day-btn[data-day="${currentDay}"]`)?.classList.add('active');
+                                    currentPhaseDisplay.textContent = `Phase ${currentPhase}, Day ${currentDay}`;
+                                }
+                                
+                                // Resume timer
+                                enableControls(true);
+                                sessionNotes.disabled = false;
+                                startBtn.textContent = 'Pause';
+                                isRunning = true;
+                                
+                                if (hasRecordedOrgasm) {
+                                    orgasmBtn.disabled = true;
+                                }
+                                if (firstPONRTime) {
+                                    ponrBtn.disabled = true;
+                                }
+                                
+                                statusIndicator.textContent = "Session Restored - Continue Training";
+                                statusIndicator.classList.add('active-mode');
+                                
+                                startTimer();
+                                
+                                // Show success message
+                                setTimeout(() => {
+                                    alert("Session successfully restored! Continue your training.");
+                                }, 500);
+                                
+                                return;
+                            }
+                        }
+                    }
+                    
+                    // Clear old session data if not restored
+                    clearActiveSession();
+                } catch (e) {
+                    console.error('Error restoring session:', e);
+                    clearActiveSession();
+                }
+            }
         }
         
         function loadData() {
