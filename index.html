@@ -238,6 +238,13 @@
         .settings-option label {
             margin-left: 5px;
         }
+        
+        .bg-mode-indicator {
+            font-size: 0.8em;
+            color: #27ae60;
+            display: none;
+            margin-left: 10px;
+        }
     </style>
 </head>
 <body>
@@ -253,6 +260,10 @@
             <div class="settings-option">
                 <input type="checkbox" id="voiceEnabled" checked>
                 <label for="voiceEnabled">Enable voice alerts</label>
+            </div>
+            <div class="settings-option">
+                <input type="checkbox" id="backgroundMode" checked>
+                <label for="backgroundMode">Enable Background Mode (Prevents stopping when switching apps)</label>
             </div>
             <div class="settings-option">
                 <label for="soundVolume">Alert volume: </label>
@@ -381,8 +392,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Session logs will be inserted here -->
-                </tbody>
+                    </tbody>
             </table>
         </div>
     </div>
@@ -422,9 +432,14 @@
         let currentDay = null;
         let hasRecordedOrgasm = false;
         let hasTriggeredTenMinuteAlert = false;
+        let wakeLock = null;
         
-        // Create audio elements for alerts
-        const restEndAudio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZSA0PVK/n77BdGAg+ltryxnMpBSl+zPLaizsIGGS57OihUBELTKXh8bllHgU2jdXzzX0vBSF1xe/glEILElyx6OyrWBUIQ5zd8sFuJAUuhM/z1YU2Bhxqvu7mnEoODlGt5fCzYBoGPJPY88p2KwUme8rx3I4+CRZiturqpVITC0mi4PK8aB8GM4nU8tGAMQYfcsLu45ZFDBFYr+ftrVoXCECY3PLEcSYELIHO8diJOQcZaLvt559NEAxPqOPwtmQcBjiP1/PMeSwFJHfH8N2RQAoUXrTp66hVFApGnt/yvmwhBTCG0fPTgjQGHW/A7eSaRw0PVK/n77BdGAg+ltrzxnUoBSh+zPPaizsIGGS57OihUBELTKXi8blmHgU1jdXzzX4vBSJ0xe/glEILElyx6OyrWRUIQ5zd8sFuJAUug8/z1oU2Bhxqvu7mnEoPDVKt5fCzYRoGPJLY88p3KwUme8rx3I4+CRZht+rqpVMSC0mh4PK8aiAFM4nU8tGAMQYfccPu45ZFDBFYr+ftrVwWCECY3PLEcSYGK4DN8tiIOQcZZ7zs56BODwxPpuPxtmQdBjiP1/PMei0FI3fH8N2RQAoUXrTp7KlXEwlGnt/yv2wiBDCG0fPTgzQGHW/A7eSaSA0PVK/n77BdGAg+lNrzyHQpBSh9zPPaizsIGGS57OihUhEKTKTi8bpmHgU1jdT0zX4vBSF0xPDglEQKElux6eyrWRUJQpvd8sFwJAQug8/z1oY2Bhxqvu7mnEoPDVGt5vCzYRsGOpPZ88p3KwUmecnw3Y4/CBZhtuvqpVMSC0mh4PK9aiAFMojV8tGBMgUfccPu45dGCxFYrufur1sXCECY3PLEcycFKoDN8tiIOQcZZ7vt56BODwxPpuPxt2UcBjiP1/POei0FI3bH8d2RQQkUXbPq7KlXEwlGnN/yv24hBTCF0fTUgzQGHW3A7uSaSA0PVK7n77FdGAg+lNn0yHUpBSh9y/PbizsIGGO47eiiUhEKTKTi8bpmHwU1jNT0zoEvBSF0xPDglEQKElux6eyrWRUJQpvd88NwJAQtg8/01oY3BRxpv+7mnUoPDVGt5vG0YRsGOpHZ9Mp3LAUlecnw3Y8/CBZhtuvqp1QRCkig4fK9aiAFMojU89KBMgUfccLv45dGCxFXrufur1wWCECY3PLEcycFKn/M89mLOQcYZ7vt56BOEAxPpuPxt2UdBTiP1/POei0FI3bH8d6RQQkUXbPq7KhYEglFnN/yv24iBDCF0fTUhDUFHG3A7uSaSA0PU67n77FfGAc+lNn0yXUpBSd9y/PcjDsHGGO47eiiUhEKS6Ti8btmHwU1jNT0zoEvBSF0xPDglEQKElux6eyrWhQJQpvd88NwJAQtg8/01oY3BRxpv+7mnUwODFGt5vG0YRsGOpHZ9Mx5KwUlecnw35A/CBVgtuvqp1QRCkig4fK9bCEEMYjU89KBMgUfcMLv5JhGChFXrufur10VCT+Y3PLGcSYFKn/M89mLOQcYZ7vt6KFOEAxOpePxt2YcBTeP1/PPei0FI3bH8d6RQQkUXbPq7KlYEglFm9/zwG4iBDCF0fTUhDUFHG3A7uSaSQ0OU67n77FfGAc9lNn0yXYoBSd9y/PcjDsHGGO47emjUhEKS6Pi8btoHgU0jNT0z4IuBSBzxPDhlUMKEVux6e2sWRQJQZrd88NyIwQtg8/01oY3BRxpv+7mnUwODFCt5vG1YhoGOZHZ9Mx5KwUleMnw35BABxVgtuvqp1USCUig4fO+bCEEMIjU89OCMgUdcMLv5JhHChBXrufvr10VCT+X3fLGcycEKX/M89qLOQcXZ7vt6KJQDwtOpePxuGYcBTeO1/TPei4EInbH8d6SQgkTXbPq7KlYEwlEm9/zwG8hBTCF0fTVhDUFHG3A7uSbSQ0OU67n77FfGQc9lNn0yXYoBSd9y/PcjTsHGGK47emjUxAKS6Pi8btoHwUzjNT0z4IvBB9zxPDhlkMKEVqw6u2sWxMJQZrd88NyIwQtgs/01oY4BRtovrDmn00NC1Ct');
+        // Audio elements
+        const restEndAudio = new Audio('data:audio/wav;base64,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');
+        
+        // Silent audio to keep background process alive (looping 1s silence)
+        const silentAudio = new Audio("data:audio/wav;base64,UklGRjIAAABXQVZFZm10IBIAAAABAAEAQB8AAEAfAAABAAgAAABmYWN0BAAAAAAAAABkYXRhAAAAAA==");
+        silentAudio.loop = true;
         
         // Text-to-speech for voice alerts
         let speechSynthesis = window.speechSynthesis;
@@ -464,32 +479,88 @@
             8: "Final Reinforcement Phase - Continue maintenance to further boost results."
         };
         
+        // Request Wake Lock to prevent screen sleep
+        async function requestWakeLock() {
+            if ('wakeLock' in navigator) {
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Wake Lock is active');
+                } catch (err) {
+                    console.error(`${err.name}, ${err.message}`);
+                }
+            }
+        }
+        
+        function releaseWakeLock() {
+            if (wakeLock !== null) {
+                wakeLock.release()
+                    .then(() => {
+                        wakeLock = null;
+                        console.log('Wake Lock released');
+                    });
+            }
+        }
+        
+        // Handle visibility change to re-acquire wake lock if needed
+        document.addEventListener('visibilitychange', async () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') {
+                await requestWakeLock();
+            }
+        });
+        
         // Voice alert function
         function speakText(text) {
             const voiceEnabled = document.getElementById('voiceEnabled').checked;
             if (!voiceEnabled) return;
             
-            // Cancel any ongoing speech
-            speechSynthesis.cancel();
+            // Note: SpeechSynthesis often fails in background on mobile
+            // We use the beep backup in the timer loop for critical alerts
             
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 0.9;
-            utterance.volume = parseFloat(document.getElementById('soundVolume').value);
+            try {
+                speechSynthesis.cancel();
+                
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 0.9;
+                utterance.volume = parseFloat(document.getElementById('soundVolume').value);
+                
+                const voices = speechSynthesis.getVoices();
+                const femaleVoice = voices.find(voice => 
+                    voice.name.toLowerCase().includes('female') ||
+                    voice.name.toLowerCase().includes('woman') ||
+                    voice.name.toLowerCase().includes('zira') ||
+                    voice.name.toLowerCase().includes('samantha')
+                );
+                
+                if (femaleVoice) {
+                    utterance.voice = femaleVoice;
+                }
+                
+                speechSynthesis.speak(utterance);
+            } catch (e) {
+                console.log("Speech synthesis failed (likely backgrounded)", e);
+            }
+        }
+        
+        // Play beep function (more reliable in background)
+        function playBeep(count = 1) {
+            const soundEnabled = document.getElementById('soundEnabled').checked;
+            if (!soundEnabled) return;
+
+            const vol = parseFloat(document.getElementById('soundVolume').value);
+            restEndAudio.volume = vol;
             
-            // Try to use a female voice if available
-            const voices = speechSynthesis.getVoices();
-            const femaleVoice = voices.find(voice => 
-                voice.name.toLowerCase().includes('female') ||
-                voice.name.toLowerCase().includes('woman') ||
-                voice.name.toLowerCase().includes('zira') ||
-                voice.name.toLowerCase().includes('samantha')
-            );
+            let played = 0;
             
-            if (femaleVoice) {
-                utterance.voice = femaleVoice;
+            function playNext() {
+                if (played < count) {
+                    restEndAudio.currentTime = 0;
+                    restEndAudio.play().catch(e => console.log("Audio play failed", e));
+                    played++;
+                    setTimeout(playNext, 300); // 300ms gap between beeps
+                }
             }
             
-            speechSynthesis.speak(utterance);
+            playNext();
         }
         
         // Load saved data
@@ -524,6 +595,10 @@
             localStorage.setItem('voiceEnabled', this.checked);
         });
         
+        document.getElementById('backgroundMode').addEventListener('change', function() {
+            localStorage.setItem('backgroundMode', this.checked);
+        });
+
         document.getElementById('soundVolume').addEventListener('change', function() {
             localStorage.setItem('soundVolume', this.value);
             restEndAudio.volume = this.value;
@@ -531,11 +606,8 @@
         
         document.getElementById('testSoundBtn').addEventListener('click', function() {
             restEndAudio.volume = document.getElementById('soundVolume').value;
-            restEndAudio.play();
-            setTimeout(() => {
-                restEndAudio.currentTime = 0;
-                restEndAudio.play();
-            }, 300);
+            // Test standard beep
+            playBeep(2);
             
             // Test voice alert too
             setTimeout(() => {
@@ -553,6 +625,9 @@
         
         const voiceEnabled = localStorage.getItem('voiceEnabled') !== 'false';
         document.getElementById('voiceEnabled').checked = voiceEnabled;
+        
+        const backgroundMode = localStorage.getItem('backgroundMode') !== 'false';
+        document.getElementById('backgroundMode').checked = backgroundMode;
         
         const soundVolume = localStorage.getItem('soundVolume') || 1;
         document.getElementById('soundVolume').value = soundVolume;
@@ -612,7 +687,19 @@
                 sessionPauseTime = Date.now();
                 startBtn.textContent = 'Resume';
                 isRunning = false;
+                releaseWakeLock();
+                silentAudio.pause(); // Stop battery drain if paused
             } else {
+                // Start/Resume
+                
+                // 1. Activate Background Mode (Silent Audio Loop)
+                if (document.getElementById('backgroundMode').checked) {
+                    silentAudio.play().catch(e => console.log("Background audio start failed", e));
+                }
+                
+                // 2. Activate Wake Lock (Keep Screen On)
+                requestWakeLock();
+
                 if (!sessionStartTime) {
                     // Start new session
                     sessionStartTime = Date.now();
@@ -648,18 +735,8 @@
                 statusIndicator.classList.add('active-mode');
                 
                 // Play sound alert when rest period ends (if enabled)
-                const soundEnabled = document.getElementById('soundEnabled').checked;
-                if (soundEnabled) {
-                    restEndAudio.play();
-                    setTimeout(() => {
-                        restEndAudio.currentTime = 0;
-                        restEndAudio.play();
-                    }, 300);
-                    setTimeout(() => {
-                        restEndAudio.currentTime = 0;
-                        restEndAudio.play();
-                    }, 600);
-                }
+                // Use playBeep for consistency
+                playBeep(3);
                 
                 // Visual alert
                 statusIndicator.style.animation = 'flash 0.5s 3';
@@ -676,6 +753,11 @@
             // Check for 10-minute mark (halfway point) for voice alert
             if (!hasTriggeredTenMinuteAlert && elapsedTime >= 10 * 60 * 1000) {
                 hasTriggeredTenMinuteAlert = true;
+                
+                // CRITICAL FIX: Voice often fails in background. 
+                // We play a distinct beep pattern (5 fast beeps) AND the voice.
+                // If voice fails, the beeps will still work because audio context is kept alive by silent loop.
+                playBeep(5); 
                 speakText("Increase speed");
                 
                 // Visual indication
@@ -690,6 +772,7 @@
             if (remainingTime <= 0) {
                 clearInterval(timerInterval);
                 timerDisplay.textContent = "00:00";
+                playBeep(3);
                 speakText("Session completed");
                 alert("Session completed!");
                 endSession();
@@ -707,6 +790,8 @@
             if (isRunning && (Date.now() - (window.lastAutoSave || 0)) > 10000) {
                 saveActiveSession();
                 window.lastAutoSave = Date.now();
+                // Refresh Wake Lock occasionally
+                if(document.visibilityState === 'visible') requestWakeLock();
             }
         }
         
@@ -776,6 +861,8 @@
         function endSession() {
             clearInterval(timerInterval);
             isRunning = false;
+            silentAudio.pause(); // Stop background loop
+            releaseWakeLock();
             
             // Calculate duration in minutes based on actual elapsed time
             const currentTime = Date.now();
